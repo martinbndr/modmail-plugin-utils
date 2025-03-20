@@ -45,7 +45,6 @@ class PluginDbManager:
         self.all_keys = set(self.defaults.keys())
 
         self._cache = {}
-        self.ready_event = asyncio.Event()
 
     @property
     def db(self):
@@ -62,13 +61,11 @@ class PluginDbManager:
         if not bot_config:
             await self.db.insert_one({"type": "config", "bot_id": str(self.bot.user.id)})
             self.logger.debug("Configuration collection created as not existing before.")
-        self.ready_event.set()
         await self.refresh()
         return self._cache
     
     async def update(self):
         """Updates the config with data from the cache"""
-        self.ready_event.clear()
         default_config = self.filter_default(self._cache)
         toset = self.filter_valid(default_config)
         unset = self.filter_valid({k: 1 for k in self.all_keys if k not in default_config})
@@ -81,21 +78,14 @@ class PluginDbManager:
         if update_query.keys():
             self.logger.debug("Updated plugin configuration to db.")
             await self.db.update_one({"type": "config", "bot_id": str(self.bot.user.id)}, update_query)
-        self.ready_event.set()
     
     async def refresh(self) -> dict:
-        self.ready_event.clear()
         for k, v in (await self.db.find_one({"type": "config", "bot_id": str(self.bot.user.id)})).items():
             k = k.lower()
             if k in self.all_keys:
                 self._cache[k] = v
-        if not self.ready_event.is_set():
-            self.ready_event.set()
             self.logger.debug("Successfully fetched configurations from database.")
         return self._cache
-    
-    async def wait_until_ready(self) -> None:
-        await self.ready_event.wait()
 
     def __getitem__(self, key: str) -> Any:
         return self.get(key)

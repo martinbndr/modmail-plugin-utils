@@ -21,7 +21,6 @@ import asyncio
 from copy import deepcopy
 import os
 import typing
-from typing import Union, Optional, Any, Iterable
 
 class _Default:
     pass
@@ -87,19 +86,20 @@ class PluginDbManager:
             self.logger.debug("Successfully fetched configurations from database.")
         return self._cache
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self, key: str) -> typing.Any:
         return self.get(key)
     
-    def __setitem__(self, key: str, item: Any) -> Any:
+    def __setitem__(self, key: str, item: typing.Any) -> typing.Any:
         key = key.lower()
         if key not in self.all_keys:
             self.logger.warning("Invalid configuration key %s", key)
         self._cache[key] = item
+        return deepcopy(self._cache[key])
 
     def __delitem__(self, key: str) -> None:
         return self.remove(key)
     
-    def get(self, key: str) -> Any:
+    def get(self, key: str) -> typing.Any:
         key = key.lower()
         if key not in self.all_keys:
             self.logger.warning("Invalid configuration key %s", key)
@@ -109,67 +109,7 @@ class PluginDbManager:
         return value
         
     async def set(self, key: str, item: typing.Any) -> None:
-        #if not convert:
         return self.__setitem__(key, item)
-
-        #if key in self.data_types["colors"]:
-        #    try:
-        #        hex_ = str(item)
-        #        if hex_.startswith("#"):
-        #            hex_ = hex_[1:]
-        #        if len(hex_) == 3:
-        #            hex_ = "".join(s for s in hex_ for _ in range(2))
-        #        if len(hex_) != 6:
-        #            self.logger.warning("Invalid color name or hex.")
-        #        try:
-        #            int(hex_, 16)
-        #        except ValueError:
-        #            self.logger.warning("Invalid color name or hex.")
-#
-        #    except:
-        #        name = str(item).lower()
-        #        name = re.sub(r"[\-+|. ]+", " ", name)
-        #        hex_ = ALL_COLORS.get(name)
-        #        if hex_ is None:
-        #            name = re.sub(r"[\-+|. ]+", "", name)
-        #            hex_ = ALL_COLORS.get(name)
-        #            if hex_ is None:
-        #                raise
-        #    return self.__setitem__(key, "#" + hex_)
-#
-        #if key in self.time_deltas:
-        #    try:
-        #        isodate.parse_duration(item)
-        #    except isodate.ISO8601Error:
-        #        try:
-        #            converter = UserFriendlyTime()
-        #            time = await converter.convert(None, item, now=discord.utils.utcnow())
-        #            if time.arg:
-        #                raise ValueError
-        #        except BadArgument as exc:
-        #            raise InvalidConfigError(*exc.args)
-        #        except Exception as e:
-        #            logger.debug(e)
-        #            raise InvalidConfigError(
-        #                "Unrecognized time, please use ISO-8601 duration format "
-        #                'string or a simpler "human readable" time.'
-        #            )
-        #        now = discord.utils.utcnow()
-        #        item = isodate.duration_isoformat(time.dt - now)
-        #    return self.__setitem__(key, item)
-#
-        #if key in self.booleans:
-        #    try:
-        #        return self.__setitem__(key, strtobool(item))
-        #    except ValueError:
-        #        raise InvalidConfigError("Must be a yes/no value.")
-#
-        #elif key in self.enums:
-        #    if isinstance(item, self.enums[key]):
-        #        # value is an enum type
-        #        item = item.value
-#
-        #return self.__setitem__(key, item)
 
     def remove(self, key: str) -> typing.Any:
         key = key.lower()
@@ -181,14 +121,14 @@ class PluginDbManager:
         self._cache[key] = deepcopy(self.defaults[key])
         return self._cache[key]
 
-    def items(self) -> Iterable:
+    def items(self) -> typing.Iterable:
         return self._cache.items()
     
     def filter_valid(self, data: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
         return {
             k.lower(): v
             for k, v in data.items()
-            if k.lower() in self.config_keys
+            if k.lower() in self.all_keys
         }
 
     def filter_default(self, data: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
@@ -201,12 +141,3 @@ class PluginDbManager:
             if v != default:
                 filtered[k.lower()] = v
         return filtered
-        
-    async def insert_doc(self, data: dict):
-        await self.db.insert_one(data)
-
-    async def update_doc(self, filter: dict, operations: dict):
-        await self.db.update_one(filter)
-
-    async def delete_doc(self, filter: dict):
-        await self.db.delete_one(filter)

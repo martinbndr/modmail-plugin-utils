@@ -94,6 +94,7 @@ class PluginDbManager:
         if key not in self.all_keys:
             self.logger.warning("Invalid configuration key %s", key)
         self._cache[key] = item
+        return deepcopy(self._cache[key])
 
     def __delitem__(self, key: str) -> None:
         return self.remove(key)
@@ -127,7 +128,7 @@ class PluginDbManager:
         return {
             k.lower(): v
             for k, v in data.items()
-            if k.lower() in self.config_keys
+            if k.lower() in self.all_keys
         }
 
     def filter_default(self, data: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
@@ -140,12 +141,3 @@ class PluginDbManager:
             if v != default:
                 filtered[k.lower()] = v
         return filtered
-        
-    async def insert_doc(self, data: dict):
-        await self.db.insert_one(data)
-
-    async def update_doc(self, filter: dict, operations: dict):
-        await self.db.update_one(filter)
-
-    async def delete_doc(self, filter: dict):
-        await self.db.delete_one(filter)

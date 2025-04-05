@@ -31,11 +31,9 @@ class PluginDbManager:
     def __init__(
             self, 
             plugin,
-            logger,
             config_keys
             ):
         self.plugin = plugin
-        self.logger = logger
         self.config_keys = config_keys
 
         self.bot = plugin.bot
@@ -52,14 +50,14 @@ class PluginDbManager:
         return self._db
 
     async def setup(self) -> dict:
-        self.logger.debug("Setting up PluginDbManager")
+        #self.logger.debug("Setting up PluginDbManager")
         data = deepcopy(self.defaults)
         self._cache = data
 
         bot_config = await self.db.find_one({"type": "config", "bot_id": str(self.bot.user.id)})
         if not bot_config:
             await self.db.insert_one({"type": "config", "bot_id": str(self.bot.user.id)})
-            self.logger.debug("Configuration collection created as not existing before.")
+            #self.logger.debug("Configuration collection created as not existing before.")
         await self.refresh()
         return self._cache
     
@@ -75,7 +73,7 @@ class PluginDbManager:
         if unset:
             update_query["$unset"] = unset
         if update_query.keys():
-            self.logger.debug("Updated plugin configuration to db.")
+            #self.logger.debug("Updated plugin configuration to db.")
             await self.db.update_one({"type": "config", "bot_id": str(self.bot.user.id)}, update_query)
     
     async def refresh(self) -> dict:
@@ -83,7 +81,7 @@ class PluginDbManager:
             k = k.lower()
             if k in self.all_keys:
                 self._cache[k] = v
-            self.logger.debug("Successfully fetched configurations from database.")
+            #self.logger.debug("Successfully fetched configurations from database.")
         return self._cache
 
     def __getitem__(self, key: str) -> typing.Any:
@@ -92,7 +90,8 @@ class PluginDbManager:
     def __setitem__(self, key: str, item: typing.Any) -> typing.Any:
         key = key.lower()
         if key not in self.all_keys:
-            self.logger.warning("Invalid configuration key %s", key)
+            return None
+            #self.logger.warning("Invalid configuration key %s", key)
         self._cache[key] = item
         return deepcopy(self._cache[key])
 
@@ -102,7 +101,8 @@ class PluginDbManager:
     def get(self, key: str) -> typing.Any:
         key = key.lower()
         if key not in self.all_keys:
-            self.logger.warning("Invalid configuration key %s", key)
+            return None
+            #self.logger.warning("Invalid configuration key %s", key)
         if key not in self._cache:
             self._cache[key] = deepcopy(self.defaults[key])
         value = self._cache[key]
@@ -113,7 +113,7 @@ class PluginDbManager:
 
     def remove(self, key: str) -> typing.Any:
         key = key.lower()
-        self.logger.info("Removing %s.", key)
+        #self.logger.info("Removing %s.", key)
         if key not in self.all_keys:
             self.logger.warning("Configuration key %s is invalid.", key)
         if key in self._cache:
@@ -136,7 +136,7 @@ class PluginDbManager:
         for k, v in data.items():
             default = self.defaults.get(k.lower(), Default)
             if default is Default:
-                self.logger.error("Unexpected configuration detected: %s.", k)
+                #self.logger.error("Unexpected configuration detected: %s.", k)
                 continue
             if v != default:
                 filtered[k.lower()] = v

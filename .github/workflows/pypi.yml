@@ -3,8 +3,13 @@ name: Upload Python Package to PyPI
 on:
   push:
     branches:
-      - master
       - dev
+
+  release:
+    branches:
+      - master
+    types: [published]
+
   workflow_dispatch:
 
 jobs:

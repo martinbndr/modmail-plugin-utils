@@ -1,40 +1,49 @@
-name: Upload Python Package
+name: Upload Python Package to PyPI
 
 on:
-  release:
-    types: [created]
+  push:
+    branches:
+      - master
+      - dev
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-publish:
+    name: Build and Publish
     runs-on: ubuntu-latest
-    environment: 
-      name: pypi
-      url: https://pypi.org/p/martinbndr-modmail-plugin-utils
-    permissions:
-      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
-    defaults:
-      run:
-        working-directory: ./
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
+      - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.12"
 
-      - name: Install dependencies
-        run: |
-          python3 -m pip install --upgrade pip
-          pip install build
+      - name: Update Pip
+        run: python -m pip install --upgrade pip
+      
+      - name: Install Python dependencies
+        run: python -m pip install --upgrade --no-cache-dir build twine
 
       - name: Build package
-        run: |
-          python3 -m pip install --upgrade build
-          python3 -m build
+        run: python -m build
 
-      - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: ./dist/
+      - name: Publish to TestPyPI or PyPI
+        env:
+          TWINE_USERNAME: "__token__"
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_PASSWORD_TEST: ${{ secrets.PYPI_TEST_API_TOKEN }}
+        run: |
+          if [ "${GITHUB_REF##*/}" = "master" ]; then
+            echo "Publishing to PyPI..."
+            twine upload dist/* \
+              -u __token__ \
+              -p "${TWINE_PASSWORD}"
+          else
+            echo "Publishing to TestPyPI..."
+            twine upload dist/* \
+              --repository testpypi \
+              -u __token__ \
+              -p "${TWINE_PASSWORD_TEST}"
+          fi
